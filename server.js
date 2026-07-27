@@ -600,6 +600,8 @@ app.get('/export-excel', async (req, res) => {
 
 app.set('views', __dirname);
 
+app.use(express.static(__dirname));
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server started running on http://localhost:${PORT}`);
