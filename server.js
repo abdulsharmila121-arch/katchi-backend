@@ -600,7 +600,7 @@ app.get('/export-excel', async (req, res) => {
 
 app.set('views', __dirname);
 
-app.use(express.static(vijay_cm.jpg));
+app.use(express.static(__dirname));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
