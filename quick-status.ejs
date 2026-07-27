@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>மனுவின் நேரடி நிலை | மக்கள் குறைதீர்ப்பு</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .status-card { background: white; width: 100%; max-width: 600px; padding: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; border-top: 8px solid #1e3c72; }
+        .info-box { background: #f8f9fa; padding: 20px; border-radius: 12px; border-left: 5px solid #2196f3; text-align: left; margin: 20px 0; }
+        
+        /* 🔄 டைம்லைன் மாடர்ன் சிஎஸ்எஸ் */
+        .timeline { display: flex; justify-content: space-between; align-items: center; margin: 30px 0; padding: 10px 0; position: relative; }
+        .step { flex: 1; text-align: center; position: relative; font-size: 12px; color: #bbb; font-weight: bold; }
+        .step::after { content: ''; position: absolute; top: 15px; right: -50%; width: 100%; height: 4px; background: #e0e0e0; z-index: 1; }
+        .step:last-child::after { content: none; }
+        .circle { width: 32px; height: 32px; background: #e0e0e0; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px auto; color: white; font-size: 14px; position: relative; z-index: 2; transition: all 0.4s; }
+        
+        /* வண்ணங்கள் */
+        .step.active .circle { background: #4caf50; box-shadow: 0 0 10px rgba(76,175,80,0.5); }
+        .step.active { color: #4caf50; }
+        .step.done .circle { background: #2196f3; }
+        .step.done { color: #2196f3; }
+        .step.done::after { background: #2196f3; }
+
+        /* ⭐ ரேட்டிங் ரேடியோஸ் */
+        .star-rating { display: flex; flex-direction: row-reverse; justify-content: center; gap: 5px; margin: 10px 0; }
+        .star-rating input { display: none; }
+        .star-rating label { font-size: 30px; color: #ccc; cursor: pointer; }
+        .star-rating input:checked ~ label, .star-rating label:hover, .star-rating label:hover ~ label { color: #ffca28; }
+    </style>
+</head>
+<body>
+
+<div class="status-card">
+    <h2 style="color: #1e3c72; margin-top: 0;">🏛️ மக்கள் குறைதீர்ப்புப் பேரவை</h2>
+    <p style="color: #666; font-size: 14px; font-weight: bold;">மனு எண்: <span style="color: #d32f2f;"><%= item.grievanceId %></span></p>
+    
+    <hr style="border: 0; border-top: 1px solid #eee;">
+
+    <!-- 📋 மனு விவரங்கள் -->
+    <div class="info-box">
+        <h4 style="margin: 0 0 8px 0; color: #333; font-size: 16px;">📋 கோரிக்கை வகை: <%= item.grievanceCategory %></h4>
+        <p style="margin: 0; font-size: 14px; color: #555; line-height: 1.5;">📝 விவரம்: <%= item.description %></p>
+    </div>
+
+    <!-- 🔄 A. Interactive Timeline (மனுவின் நேரடி நிலை) -->
+    <h3 style="font-size: 15px; color: #444; text-align: left; margin-top: 25px;">📊 மனுவின் தற்போதைய நிலை:</h3>
+    <div class="timeline">
+        <div class="step <%= item.status === 'Pending' ? 'active' : 'done' %>">
+            <div class="circle">📝</div>சமர்ப்பிக்கப்பட்டது
+        </div>
+        <div class="step <%= item.status === 'Completed' ? 'done' : (item.status === 'Pending' && item.beforeImage ? 'active' : '') %>">
+            <div class="circle">⏳</div>பரிசீலனை
+        </div>
+        <div class="step <%= item.status === 'Completed' ? 'active' : '' %>">
+            <div class="circle">✅</div>நிறைவுற்றது
+        </div>
+    </div>
+
+    <!-- 💬 B & C: வேலை முடிந்திருந்தால் மட்டும் ரேட்டிங் மற்றும் ரீ-ஓபன் காட்டும் பகுதி -->
+    <% if (item.status === 'Completed') { %>
+        <div style="background: #fff3cd; padding: 20px; border-radius: 12px; border: 1px solid #ffeeba; margin-top: 25px;">
+            
+            <!-- நட்சத்திரக் குறியீடு படிவம் -->
+            <% if (!item.rating) { %>
+                <form action="/submit-feedback" method="POST">
+                    <input type="hidden" name="grievanceId" value="<%= item.grievanceId %>">
+                    <h4 style="margin: 0; color: #856404; font-size: 14px;">🎉 இந்த வேலை உங்களுக்கு திருப்தி அளிக்கிறதா?</h4>
+                    <div class="star-rating">
+                        <input type="radio" id="star5" name="rating" value="5" /><label for="star5">★</label>
+                        <input type="radio" id="star4" name="rating" value="4" /><label for="star4">★</label>
+                        <input type="radio" id="star3" name="rating" value="3" /><label for="star3">★</label>
+                        <input type="radio" id="star2" name="rating" value="2" /><label for="star2">★</label>
+                        <input type="radio" id="star1" name="rating" value="1" /><label for="star1">★</label>
+                    </div>
+                    <input type="text" name="feedback" placeholder="உங்கள் கருத்துக்களை இங்கே பதிவிடவும்..." style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box;" required>
+                    <button type="submit" style="width: 100%; background: #4caf50; color: white; border: none; padding: 10px; font-weight: bold; margin-top: 10px; border-radius: 6px; cursor: pointer;">மதிப்பீட்டைச் சமர்ப்பி</button>
+                </form>
+            <% } else { %>
+                <div style="color: #ff9800; font-weight: bold; font-size: 16px;">
+                    உங்களின் மதிப்பீடு: <% for(let i=0; i<item.rating; i++) { %>★<% } %>
+                    <p style="font-size: 13px; color: #666; font-weight: normal; margin: 5px 0 0 0;">💬 <%= item.feedback %></p>
+                </div>
+            <% } %>
+
+            <!-- 🚨 மனுவை மறுபரிசீலனை செய்யக் கோருதல் -->
+            <form action="/reopen-grievance" method="POST" onsubmit="return confirm('நிச்சயமாக இந்த வேலையில் திருப்தி இல்லையா? மனு மறுபரிசீலனை செய்யப்பட வேண்டுமா?');" style="margin-top: 15px;">
+                <input type="hidden" name="grievanceId" value="<%= item.grievanceId %>">
+                <button type="submit" style="width: 100%; background: #d32f2f; color: white; border: none; padding: 10px; font-weight: bold; border-radius: 6px; cursor: pointer;">
+                    ⚠️ வேலை சரியாக நடக்கவில்லை (Re-Open Request)
+                </button>
+            </form>
+            <% if(item.reopenCount) { %>
+                <small style="color: red; font-weight: bold; display: block; margin-top: 8px;">🔄 இந்த மனு ஏற்கனவே <%= item.reopenCount %> முறை மறுபரிசீலனைக்கு உட்படுத்தப்பட்டுள்ளது!</small>
+            <% } %>
+        </div>
+    <% } %>
+
+    <!-- 🔙 பின்னே செல்ல -->
+    <button onclick="window.location.href='/'" style="background: #6c757d; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 25px; width: 100%;">
+        🔙 முகப்பு பக்கத்திற்கு செல்ல (Back to Login)
+    </button>
+</div>
+
+</body>
+</html>

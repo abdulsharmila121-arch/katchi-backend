@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grievance Management System</title>
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#007bff">
+
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+          .then(() => console.log("PWA Service Worker Registered"))
+          .catch((err) => console.log("PWA Service Worker Failed", err));
+      }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Dynamic PDF Generation (JSPDF) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body { 
+            font-family: 'Arial', sans-serif; 
+            background-color: #f4f6f9; 
+            margin: 0; 
+            padding: 0; 
+            display: block; 
+            min-height: 100vh; 
+            overflow-x: hidden; 
+        }
+        
+        .main-content { 
+            padding: 20px 3%; 
+            box-sizing: border-box; 
+            width: 100%; 
+            margin: 0;
+        }
+
+        @media (max-width: 768px) {
+            .main-content { 
+                padding: 15px 15px; 
+            } 
+        }
+        
+        .mla-layout { 
+            margin-left: 0; 
+            width: 100%; 
+        }
+
+        .header { 
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); 
+            color: white; 
+            padding: 25px; 
+            text-align: center; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(30, 60, 114, 0.3); 
+            margin-bottom: 25px; 
+            width: 100%;
+            box-sizing: border-box;
+            position: relative;
+        }
+        .header h1 { margin: 0; font-size: 26px; letter-spacing: 1px; }
+
+        .notification-bell-container {
+            position: absolute;
+            top: 20px;
+            right: 25px;
+            cursor: pointer;
+        }
+        .bell-icon {
+            font-size: 24px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 12px;
+            border-radius: 50%;
+            position: relative;
+            transition: 0.3s;
+        }
+        .bell-icon:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+        .badge-count {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: #e74c3c;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .notification-dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 50px;
+            width: 300px;
+            background: white;
+            color: #333;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            border-radius: 8px;
+            z-index: 1000;
+            text-align: left;
+            overflow: hidden;
+        }
+        .notification-dropdown.show { display: block; }
+        .notification-header {
+            background: #1e3c72;
+            color: white;
+            padding: 10px 15px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .notification-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+        }
+        .notification-item:hover { background: #f8f9fa; }
+
+        .star-rating {
+            display: inline-flex;
+            flex-direction: row-reverse;
+            font-size: 20px;
+            justify-content: flex-end;
+        }
+        .star-rating input { display: none; }
+        .star-rating label { color: #ccc; cursor: pointer; transition: 0.2s; }
+        .star-rating label:hover,
+        .star-rating label:hover ~ label,
+        .star-rating input:checked ~ label { color: #f39c12; }
+
+        .role-bar { 
+            background: #04a9eb; 
+            color: white; 
+            padding: 12px 20px; 
+            border-radius: 8px; 
+            margin-bottom: 25px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            box-shadow: 0 2px 8px rgba(4, 169, 235, 0.3); 
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        .card h2 { margin-top: 0; color: #b71c1c; border-bottom: 2px solid #eee; padding-bottom: 10px; font-size: 20px; }
+        
+        .form-grid { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr) !important; 
+            gap: 20px; 
+            margin-bottom: 20px; 
+        }
+        
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-weight: bold; margin-bottom: 8px; color: #333; font-size: 14px; }
+        .form-group input, .form-group select, .form-group textarea { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        
+        .btn-submit { background-color: #b71c1c; color: white; border: none; padding: 12px 25px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.3s; width: 100%; max-width: 250px; margin-top: 10px; }
+        .btn-submit:hover { background-color: #7f0000; }
+        .btn-logout { background-color: #ffffff; color: #333; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; font-size: 14px; transition: 0.3s; }
+        .btn-logout:hover { background-color: #eee; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; border-radius: 8px; overflow: hidden; }
+        th, td { padding: 14px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+        th { background-color: #b71c1c; color: white; font-weight: bold; }
+        tr:hover { background-color: #f9f9f9; }
+        
+        .status-badge { padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; display: inline-block; }
+        .Pending_Managaram { background-color: #ffe0b2; color: #e65100; border: 1px solid #ffcc80; }
+        .In_Progress { background-color: #e3f2fd; color: #0d47a1; border: 1px solid #bbdefb; }
+        .Completed { background-color: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+        .Rejected { background-color: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+        
+        .status-form { display: flex; gap: 5px; align-items: center; margin-top: 5px; flex-direction: column; }
+        .status-select { padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; font-weight: bold; width: 100%; }
+        .status-btn { background-color: #333; color: white; border: none; padding: 6px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; }
+        .status-btn:hover { background-color: #111; }
+
+        .urgent-alert { background-color: #ffebee; color: #c62828; padding: 15px; border-radius: 6px; border: 1px solid #ffcdd2; margin-bottom: 20px; font-weight: bold; animation: blink 1.5s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        .sidebar { width: 280px; background-color: #1e3c72; color: white; padding: 20px 15px; box-sizing: border-box; display: flex; flex-direction: column; gap: 15px; border-right: 3px solid #04a9eb; position: fixed; top: 0; left: -285px; bottom: 0; z-index: 1001; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow-y: auto; white-space: nowrap; }
+        .sidebar.active { left: 0; box-shadow: 5px 0 25px rgba(0,0,0,0.4); }
+        .sidebar h3 { text-align: center; border-bottom: 2px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-top: 0; margin-bottom: 15px; color: #fff; font-size: 16px; }
+        .sidebar a, .sidebar button { display: flex; align-items: center; width: 100%; background-color: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: white; text-align: left; padding: 14px 15px; text-decoration: none; font-size: 15px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; box-sizing: border-box; font-family: inherit; }
+        .sidebar .btn-text { margin-left: 15px; }
+        .sidebar a:hover, .sidebar button:hover { background-color: #04a9eb; color: white; }
+
+        .menu-toggle-btn { background: #1e3c72; color: white; border: none; font-size: 24px; padding: 8px 15px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.15); transition: background 0.2s; }
+        .menu-toggle-btn:hover { background: #04a9eb; }
+        .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 1000; }
+        .sidebar-overlay.active { display: block; }
+
+        .toggle-section { display: none; }
+        .blink-banner { animation: blinker 1.5s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+
+        .summary-cards-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 25px; }
+        .summary-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 15px; border-left: 5px solid #ccc; }
+        .summary-card.pending { border-left-color: #e65100; }
+        .summary-card.progress { border-left-color: #0d47a1; }
+        .summary-card.completed { border-left-color: #2e7d32; }
+
+        .mla-appreciation-banner { background: #fff3e0; border: 2px dashed #ff9800; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; animation: livePulse 2s infinite; }
+        @keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(255, 152, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0); } }
+
+        .btn-map-route {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background-color: #0f9d58 !important;
+            color: white !important;
+            padding: 6px 12px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 12px;
+            transition: 0.2s;
+            border: none;
+        }
+        .btn-map-route:hover { background-color: #0b8043 !important; text-decoration: none; }
+
+        .btn-direct-call {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background-color: #007bff !important;
+            color: white !important;
+            padding: 6px 12px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 12px;
+            transition: 0.2s;
+            border: none;
+        }
+        .btn-direct-call:hover { background-color: #0056b3 !important; text-decoration: none; }
+
+        .deadline-danger {
+            background-color: #f8d7da !important;
+            border-left: 6px solid #dc3545 !important;
+        }
+        .deadline-warning {
+            background-color: #fff3cd !important;
+            border-left: 6px solid #ffc107 !important;
+        }
+
+        .no-location { color: #888; font-size: 12px; font-style: italic; }
+
+        /* 📜 திருக்குறள் பாப்-அப் ஸ்டைல் */
+        .kural-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.85); 
+            backdrop-filter: blur(8px); 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .kural-card {
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 520px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border: 2px solid #e2e8f0;
+            animation: popupAnimation 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popupAnimation {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .kural-header h2 {
+            color: #1e3c72;
+            margin: 10px 0 20px 0;
+            font-size: 22px;
+        }
+
+        .kural-icon { font-size: 40px; }
+
+        .kural-content {
+            background: #f1f5f9;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 5px solid #1e3c72;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .kural-line {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #0f172a;
+            margin: 0 0 12px 0;
+        }
+
+        .kural-divider {
+            height: 1px;
+            background: #cbd5e1;
+            margin: 10px 0;
+        }
+
+        .kural-explanation {
+            font-size: 14px;
+            line-height: 1.5;
+            color: #334155;
+            margin: 0;
+        }
+
+        .welcome-msg {
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .btn-kural-continue {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .btn-kural-continue:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(30, 60, 114, 0.4);
+        }
+
+        .urgent-banner {
+    background-color: #ff3838;
+    color: #ffffff;
+    padding: 12px 20px;
+    font-size: 15px;
+    font-family: Arial, sans-serif;
+    border-bottom: 2px solid #b30000;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    animation: pulse-border 2s infinite;
+}
+
+.urgent-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.urgent-icon {
+    font-size: 20px;
+    margin-right: 10px;
+    animation: blink 1s infinite;
+}
+
+.urgent-text {
+    flex-grow: 1;
+}
+
+.close-banner-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: 15px;
+}
+
+/* பளிச்சிடும் அனிமேஷன் (Blinking Animation) */
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.3; }
+    100% { opacity: 1; }
+}
+    </style>
+</head>
+<body>
+
+    <!-- 📜 திருக்குறள் வெல்கம் பாப்-அப் -->
+    <% if (currentRole === 'MLA' || currentRole === 'Poruppalar') { %>
+    <div id="kuralModal" class="kural-modal-overlay" style="display: none;">
+        <div class="kural-card">
+            <div class="kural-header">
+                <span class="kural-icon">📜</span>
+                <h2>இன்றைய திருக்குறள்</h2>
+            </div>
+            
+            <div class="kural-content">
+                <p class="kural-line"><strong>"<%- todayKural.kural %>"</strong></p>
+                <div class="kural-divider"></div>
+                <p class="kural-explanation">
+                    <strong>💡 பொருள்:</strong> <%= todayKural.explanation %>
+                </p>
+            </div>
+            <div class="kural-footer">
+                <p class="welcome-msg">வணக்கம் <strong><%= currentRole %></strong>! நல்வரவு.</p>
+                <button onclick="closeKuralModal()" class="btn-kural-continue">
+                    டாஷ்போர்டுக்குச் செல் ➔
+                </button>
+            </div>
+        </div>
+    </div>
+    <% } %>
+
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <% if (currentRole === 'MLA' || currentRole === 'Poruppalar' || currentRole === 'CM') { %>
+    <div class="sidebar">
+        <% if (currentRole === 'CM') { %>
+            <h3>👑 CM Control Panel</h3>
+            <button onclick="toggleSection('analyticsSection')"><span>🗺️</span><span class="btn-text">1. AI Heatmap & Analytics</span></button>
+            <button onclick="toggleSection('rankingSection')"><span>🏆</span><span class="btn-text">2. Minister & Dept Ranking</span></button>
+            <button onclick="toggleSection('directiveSection')"><span>🎙️</span><span class="btn-text">3. One-Click CM Voice</span></button>
+            <button onclick="toggleSection('sentimentSection')"><span>📊</span><span class="btn-text">4. Public Sentiment Analysis</span></button>
+            <button onclick="toggleSection('cmMainTableSection')"><span>📋</span><span class="btn-text">5. Grievances Overview</span></button>
+        <% } else if (currentRole === 'MLA') { %>
+            <h3>🏛️ MLA Control Panel</h3>
+            <a href="/export-excel"><span>📥</span><span class="btn-text">1. Excel Download</span></a>
+            <a href="/view-archive" target="_blank"><span>📂</span><span class="btn-text">2. Archive Document View</span></a>
+            <a href="#" onclick="showMlaSection('leaderboard-section')"><span>🏆</span><span class="sidebar-link">3. துறை லீடர்போர்டு</span></a>
+            <button onclick="toggleSection('deptOverview')"><span>📊</span><span class="btn-text">4. Department Overview</span></button>
+            <button onclick="toggleSection('wardPendingList')"><span>📍</span><span class="btn-text">5. Ward Pending List</span></button>
+            <button onclick="toggleSection('announcementFormSection')"><span>📋</span><span class="btn-text">6. Announcement</span></button>
+        <% } else if (currentRole === 'Poruppalar') { %>
+            <h3>🚩 பொறுப்பாளர் பேனல்</h3>
+
+            <div style="background: rgba(255, 255, 255, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.2);">
+                <div style="font-size: 13px; font-weight: bold; color: #04a9eb; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;">
+                    📈 செயல்திறன் விவரங்கள்
+                </div>
+
+                <div style="font-size: 13px; color: #fff; margin: 6px 0; display: flex; justify-content: space-between;">
+                    <span>📋 மொத்த கோரிக்கைகள்:</span>
+                    <strong style="color: #64b5f6;"><%= totalCount %></strong>
+                </div>
+
+                <div style="font-size: 13px; color: #fff; margin: 6px 0; display: flex; justify-content: space-between;">
+                    <span>⏳ நிலுவையில் உள்ளவை:</span>
+                    <strong style="color: #ffb74d;"><%= pendingCount %></strong>
+                </div>
+
+                <div style="font-size: 13px; color: #fff; margin: 6px 0; display: flex; justify-content: space-between;">
+                    <span>✅ தீர்க்கப்பட்டவை:</span>
+                    <strong style="color: #81c784;"><%= resolvedCount %></strong>
+                </div>
+
+                <div style="font-size: 13px; color: #fff; margin: 6px 0; display: flex; justify-content: space-between; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 6px; margin-top: 6px;">
+                    <span>🏆 புள்ளிகள் (Points):</span>
+                    <strong style="color: #ffd54f;"><%= (req.session && req.session.points) ? req.session.points : 0 %> XP</strong>
+                </div>
+            </div>
+
+            <a href="#" onclick="toggleSidebar()"><span>📋</span><span class="btn-text">1. பணி ஒதுக்கீடுகள்</span></a>
+            <button onclick="downloadPDFReport()"><span>🖨️</span><span class="btn-text">2. Work Report PDF</span></button>
+        <% } %>
+    </div>
+    <% } %>
+
+    <div class="main-content <%= currentRole === 'MLA' ? 'mla-layout' : '' %>">
+    
+        <% if (typeof successId !== 'undefined' && successId) { %>
+            <div style="background-color: #e8f5e9; color: #2e7d32; padding: 15px; border-radius: 6px; border: 1px solid #a5d6a7; margin-bottom: 20px; font-weight: bold; text-align: center;">
+                ✅ உங்கள் மனு வெற்றிகரமாகச் சமர்ப்பிக்கப்பட்டது! உங்கள் மனு எண்: <%= successId %>
+            </div>
+        <% } %>
+
+        <% if (currentRole === 'MLA' || currentRole === 'CM') { 
+            let urgentCount = complaints.filter(c => c.priority === 'Urgent' && c.status !== 'Completed').length;
+            if (urgentCount > 0) { %>
+                
+            <% } 
+        } %>
+        
+        <div class="header">
+            <h1>🏛️ மக்கள் குறைதீர்ப்பு ஒருங்கிணைந்த போர்ட்டல்</h1>
+
+            <div class="notification-bell-container" onclick="toggleNotifications()">
+                <div class="bell-icon">
+                    🔔
+                    <span class="badge-count" id="notifBadge">2</span>
+                </div>
+                <div class="notification-dropdown" id="notificationDropdown">
+                    <div class="notification-header">📢 புதிய அறிவிப்புகள் (Notifications)</div>
+                    <div class="notification-item">🚨 மனு #GRV-102 அவசரப் பணியாக மாற்றப்பட்டுள்ளது.</div>
+                    <div class="notification-item">✅ மனு #GRV-089 பணி நிறைவு செய்யப்பட்டது.</div>
+                    <div class="notification-item" style="text-align: center; background: #f1f5f9;"><button onclick="requestPushPermission()" style="border:none; background:transparent; color:#1e3c72; font-weight:bold; cursor:pointer;">📲 Web Push Enable செய்</button></div>
+                </div>
+            </div>
+            
+            <% if (currentRole === 'Poruppalar') { 
+                let appreciatedPetitions = complaints.filter(c => c.constituency === constituency && c.appreciation && c.appreciation.trim() !== ""); 
+                if (appreciatedPetitions.length > 0) { %>
+                    <div id="urgent-alert-banner" class="urgent-banner" style="display: none;">
+    <div class="urgent-content">
+        <span class="urgent-icon">🚨</span>
+        <span class="urgent-text">
+            <strong>அவசரக் கவனிப்புக்கு:</strong> உங்களுடைய டேஷ்போர்டில் <span id="urgent-count">0</span> புகார்கள் மிக அவசரம் (Urgent) என்ற நிலையில் நிலுவையில் உள்ளன! உடனடி நடவடிக்கை தேவை....
+        </span>
+        <button class="close-banner-btn" onclick="dismissUrgentBanner()">✕</button>
+    </div>
+</div>
+                    <div class="mla-appreciation-banner" style="margin-top: 15px;">
+                        <span style="font-size: 18px; font-weight: bold; color: #d35400; animation: blinker 1.2s linear infinite;">
+                            🎉 🎯 MLA பாராட்டுச் செய்தி: "பொறுப்பாளர் செய்த பணிகளை MLA பார்த்துவிட்டு தங்களின் மேலான பாராட்டுகளைத் தெரிவித்துள்ளார்!" 🏆
+                        </span>
+                        <div style="font-size: 13px; color: #555; margin-top: 5px;">கீழே உள்ள அட்டவணையில் உங்களது சான்றிதழ் மற்றும் பாராட்டுகளைப் பார்க்கலாம்.</div>
+                    </div>
+                <% } %>
+            <% } %>
+        </div>
+
+        <div class="role-bar">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <% if (currentRole === 'MLA' || currentRole === 'Poruppalar' || currentRole === 'CM') { %>
+                    <button class="menu-toggle-btn" onclick="toggleSidebar()">⋮☰</button>
+                <% } %>
+                <div>உள்நுழைவுப் பங்கு (Role): <span style="color: yellow;"><%= currentRole %></span> 
+                <% if(typeof constituency !== 'undefined' && constituency) { %> | தொகுதி (Constituency): <span style="color: yellow;"><%= constituency %></span><% } %></div>
+            </div>
+            
+            <a href="/logout" onclick="handleLogout()" class="btn-logout">📲 வெளியேறு (Logout)</a>
+        </div>
+
+        <div id="mla-profile-card" style="display: none; width: 100% !important; max-width: 600px !important; margin: 0 auto 30px auto !important; background: #ffffff !important; padding: 25px !important; border-radius: 16px !important; box-shadow: 0 15px 35px rgba(0,0,0,0.06) !important; border: 1px solid #e1e8ed !important; border-left: 6px solid #04a9eb !important; box-sizing: border-box !important;">
+            <div style="display: flex !important; flex-direction: row !important; align-items: center !important; gap: 25px !important; text-align: left !important; justify-content: flex-start !important;">
+                
+                <div style="width: 110px !important; height: 110px !important; flex-shrink: 0 !important; background: #fff !important; padding: 4px !important; border-radius: 50% !important; box-shadow: 0 4px 15px rgba(0,0,0,0.08) !important; border: 2px solid #04a9eb !important; position: relative !important;">
+                    <img id="mla-image" src="" alt="MLA Photo" onerror="this.style.display='none'; document.getElementById('mla-icon-fallback-new').style.display='flex';" style="width: 100% !important; height: 100% !important; border-radius: 50% !important; object-fit: cover !important; display: block !important;">
+                    <div id="mla-icon-fallback-new" style="width: 100%; height: 100%; border-radius: 50%; background: #e1e8ed; display: none; align-items: center; justify-content: center; font-size: 24px;">🏛️</div>
+                </div>
+                
+                <div style="flex-grow: 1 !important; display: flex !important; flex-direction: column !important; gap: 5px !important;">
+                    <span style="font-size: 11px !important; font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 1.5px !important; color: #04a9eb !important; background: rgba(4, 169, 235, 0.08) !important; padding: 3px 10px !important; border-radius: 4px !important; width: fit-content !important; margin: 0 !important;">
+                        சட்டமன்ற உறுப்பினர் (MLA)
+                    </span>
+                    <h3 id="mla-name" style="margin: 3px 0 2px 0 !important; color: #1a202c !important; font-size: 22px !important; font-weight: 800 !important; font-family: 'Segoe UI', Roboto, sans-serif !important; line-height: 1.2 !important;"></h3>
+                    
+                    <div style="background: #fff9db !important; color: #f59f00 !important; padding: 6px 14px !important; border-radius: 8px !important; display: inline-flex !important; align-items: center !important; gap: 8px !important; font-weight: 600 !important; font-size: 13px !important; border: 1px solid #ffe066 !important; width: fit-content !important; margin-top: 5px !important;">
+                        <span>📢</span> <span>வணக்கம் மக்களே, நான்தான் உங்கள் MLA!</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <% if (currentRole === 'Public') { %>
+            <div class="card">
+                <h2>✍️ புதிய பொது மக்கள் மனு பதிவு படிவம் (New Grievance Registration)</h2>
+                <form action="/submit-complaint" method="POST" enctype="multipart/form-data">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>பொதுமகன் பெயர் (Name):</label>
+                            <input type="text" name="citizenName" placeholder="உங்கள் பெயரை உள்ளிடவும்" required>
+                        </div>
+                        <div class="form-group">
+                            <label>மொபைல் எண் (Mobile):</label>
+                            <input type="tel" name="citizenMobile" placeholder="அலைபேசி எண்" required>
+                        </div>
+                        <div class="form-group">
+                            <label>மின்னஞ்சல் முகவரி (Email):</label>
+                            <input type="email" name="citizenEmail" placeholder="மின்னஞ்சல்">
+                        </div>
+
+                        <div class="form-group">
+                            <label>மாவட்டம் (District):</label>
+                            <select id="district" name="district" onchange="updateConstituencies()">
+  <option value="">மாவட்டத்தைத் தேர்ந்தெடுக்கவும்</option>
+  <option value="சென்னை">சென்னை</option>
+</select>
+                        </div>
+
+                        <div class="form-group">
+    <label>தொகுதி (Constituency):</label>
+    <select id="constituency" name="constituency" onchange="updateWards(); updateMLAProfile();">
+        <option value="">முதலில் மாவட்டத்தைத் தேர்ந்தெடுக்கவும்</option>
+    </select>
+</div>
+
+                        <div class="form-group">
+                            <label>வார்டு (Ward):</label>
+                            <select id="ward" name="ward">
+  <option value="">முதலில் தொகுதியைத் தேர்ந்தெடுக்கவும்</option>
+</select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>தெரு பெயர் மற்றும் கதவு எண் (Street & Door No):</label>
+                            <input type="text" name="streetName" placeholder="தெரு பெயர் மற்றும் கதவு எண்" required>
+                        </div>
+                        <div class="form-group">
+                            <label>வரைபட இருப்பிடம் (Google Map Location):</label>
+                            <div style="display:flex; gap:10px;">
+                                <input type="text" id="googleMapLocation" name="googleMapLocation" placeholder="Coordinates">
+                                <button type="button" onclick="getCurrentLocation()" style="background:#333; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-weight:bold;">📍 Live GPS</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>துறை:</label>
+                            <select id="department">
+                                <option value="">துறையைத் தேர்ந்தெடுக்கவும்</option>
+                                <option value="மின்சாரம்">மின்சாரத் துறை</option>
+                                <option value="குடிநீர் மற்றும் கழிவுநீர்">குடிநீர் வாரியம்</option>
+                                <option value="சாலை மற்றும் போக்குவரத்து">சாலை மேம்பாட்டுத் துறை</option>
+                                <option value="சுகாதாரம் மற்றும் தூய்மை">சுகாதாரத் துறை</option>
+                            </select>
+                            </div>
+                        <div class="form-group">
+                            <label>CM/MLA? (Recipient):</label>
+                            <select name="recipient" required>
+                                <option value="MLA">சட்டமன்ற உறுப்பினர் (MLA)</option>
+                                <option value="CM">முதலமைச்சர் (CM)</option>
+                            </select>
+                        </div>
+                    </div>
+                        
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <span>புகாரின் முழு விவர (Grievance Description):</span>
+                            <select id="voiceLangSelect" style="padding: 4px; border-radius: 4px; font-size: 12px; font-weight: bold; border: 1px solid #ccc;">
+                                <option value="ta-IN">தமிழ் (Tamil)</option>
+                                <option value="en-US">English / Tanglish</option>
+                            </select>
+                            <button type="button" id="voiceBtn" onclick="startSpeechToText()" style="background: #b71c1c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 5px;">
+                                🎙️ வாய்ஸ் டைப்பிங் (AI Voice)
+                            </button>
+                        </label>
+                        <textarea id="description" oninput="autoSelectDepartment()" placeholder="உங்கள் புகாரை இங்கே விவரிக்கவும்..."></textarea>
+                        <small id="aiSuggestTag" style="color: #4caf50; font-weight: bold; display: block; margin-top: 5px;"></small>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>புகார் தொடர்பான புகைப்படம் / வீடியோ (Media Capture):</label>
+                            <input type="file" name="complaintMedia" accept="image/*,video/*">
+                        </div>
+                        <div class="form-group">
+                            <label>மனு கடிதம் நகல் (Written Complaint Letter Document):</label>
+                            <input type="file" name="complaintLetter" accept=".pdf,.doc,.docx,image/*">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-submit">📤 மனுவை சமர்ப்பி (Submit Grievance)</button>
+                </form>
+            </div>
+        <% } %>
+
+        <% if (currentRole === 'MLA') { 
+            let mlaComplaints = complaints.filter(c => c.constituency === constituency); 
+        %>
+
+            <div id="announcementFormSection" class="card toggle-section">
+                <h3 style="color:#1e3c72;">📢 புதிய பொது அறிவிப்பு பதிவிடுதல் (Post New Announcement)</h3>
+                <form action="/add-announcement" method="POST" style="display: flex; flex-direction: column; gap: 15px;">
+                    <div class="form-group">
+                        <label style="font-weight: bold; margin-bottom: 8px;">அறிவிப்பின் விவரம் (Announcement Content):</label>
+                        <textarea name="content" placeholder="பொது மக்களுக்கு தெரிவிக்க வேண்டிய முக்கிய அறிவிப்பை இங்கே எழுதவும்..." required style="padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; min-height: 100px; resize: vertical;"></textarea>
+                    </div>
+                    <button type="submit" class="btn-submit" style="background-color: #1e3c72; max-width: 200px;">📤 அறிவிப்பை வெளியிடு</button>
+                </form>
+            </div>
+
+            <div id="deptOverview" class="card toggle-section">
+                <h3 style="color:#1e3c72;">📊 துறை வாரியான மனுக்கள் நிலவரம்</h3>
+                <table>
+                    <thead>
+                        <tr><th>துறை பெயர் (Department)</th><th>மொத்த மனுக்கள் எண்ணிக்கை</th></tr>
+                    </thead>
+                    <tbody>
+                        <% 
+                            let categories = ["Drinking_Water", "Road_Repair", "Street_Light", "Sewage_Drainage", "Electricity"];
+                            categories.forEach(cat => {
+                                let count = mlaComplaints.filter(c => c.grievanceCategory === cat).length;
+                        %>
+                            <tr><td><strong><%= cat %></strong></td><td><span style="font-size:16px; color:#1e3c72; font-weight:bold;"><%= count %></span></td></tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="wardPendingList" class="card toggle-section">
+                <h3 style="color:#b71c1c;">📍 வார்டு வாரியான நிலுவை மனுக்கள்</h3>
+                <table>
+                    <thead>
+                        <tr><th>வார்டு எண் (Ward No)</th><th>புதிய மனுக்கள் (Pending)</th><th>நடவடிக்கையில் உள்ளவை (In Progress)</th></tr>
+                    </thead>
+                    <tbody>
+                        <% if (typeof wardList !== 'undefined' && wardList[constituency]) { 
+                            wardList[constituency].forEach(ward => {
+                                let pending = mlaComplaints.filter(c => c.wardZone === ward && c.status.startsWith('Pending')).length;
+                                let progress = mlaComplaints.filter(c => c.wardZone === ward && c.status === 'In_Progress').length;
+                        %>
+                            <tr>
+                                <td><strong><%= ward %></strong></td>
+                                <td style="color:orange; font-weight:bold;"><%= pending %></td>
+                                <td style="color:blue; font-weight:bold;"><%= progress %></td>
+                            </tr>
+                        <% })} %>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="leaderboard-section" class="mla-dynamic-section" style="display: none; background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <h3 style="margin-top:0; color:#333;">🏆 துறை செயல்திறன் லீடர்போர்டு (Leaderboard)</h3>
+                <table style="width:100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+                    <thead>
+                        <tr style="background: #b71c1c; color: white;">
+                            <th style="padding: 10px;">துறை (Department)</th>
+                            <th style="padding: 10px;">முடித்தவை</th>
+                            <th style="padding: 10px;">வெற்றி விகிதம்</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% 
+                        let finalLeaderboard = [];
+                        if (typeof leaderboard !== 'undefined') {
+                            finalLeaderboard = leaderboard;
+                        } else if (typeof complaintsList !== 'undefined') {
+                            let depts = ['Water', 'Electricity', 'Roads', 'Sanitation'];
+                            finalLeaderboard = depts.map(dept => {
+                                let total = complaintsList.filter(c => c.department === dept).length;
+                                let resolved = complaintsList.filter(c => c.department === dept && c.status === 'Completed').length;
+                                let rate = total > 0 ? Math.round((resolved / total) * 100) : 0;
+                                return { department: dept, resolvedCount: resolved, successRate: `${rate}%` };
+                            });
+                            finalLeaderboard.sort((a, b) => b.resolvedCount - a.resolvedCount);
+                        }
+                        finalLeaderboard.forEach(dept => { 
+                        %>
+                            <tr style="border-bottom: 1px solid #eee;">
+                                <td style="padding: 10px; font-weight: bold;"><%= dept.department %></td>
+                                <td style="padding: 10px; color: green; font-weight: bold;"><%= dept.resolvedCount %> மனுக்கள்</td>
+                                <td style="padding: 10px;"><span style="background:#e8f5e9; color:#2e7d32; padding:4px 10px; border-radius:12px; font-size:12px; font-weight: bold;"><%= dept.successRate %></span></td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>📋 தொகுதி குறைதீர்ப்பு முதன்மை அட்டவணை</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 30%;">மனு எண் & விவரம்</th>
+                            <th style="width: 15%;">மனுதாரர்</th>
+                            <th style="width: 20%;">செயல்பாடு (Forward)</th>
+                            <th style="width: 20%;">நிலை / காலக்கெடு</th>
+                            <th style="width: 15%;">காப்பகம் (Archive)</th>
+                        </tr>   
+                    </thead>
+                    <tbody>
+                        <% if(mlaComplaints.length === 0) { %>
+                            <tr><td colspan="5" style="text-align:center; color: gray;">கோரிக்கைகள் எதுவும் தற்சமயம் இல்லை.</td></tr>
+                        <% } else { %>
+                            <% mlaComplaints.forEach(function(item) { %>
+                                <tr>
+                                    <td>
+                                        <strong><%= item.grievanceId %></strong><br>
+                                        <small style="color: blue; font-weight: bold;"><%= item.grievanceCategory %></small>
+                                        <p style="margin: 5px 0; color: #444; line-height: 1.4;"><%= item.description %></p>
+                                        
+                                        <div class="attachment-buttons" style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+                                            <% if (item.mediaFile) { %>
+                                                <a href="/uploads/<%= item.mediaFile %>" target="_blank" class="status-btn" 
+                                                   style="background-color: #007bff; color: white; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 12px; border-radius: 4px;">
+                                                    🖼️ View Media
+                                                </a>
+                                            <% } %>
+
+                                            <% if (item.letterFile) { %>
+                                                <a href="/uploads/<%= item.letterFile %>" target="_blank" class="status-btn" 
+                                                   style="background-color: #28a745; color: white; text-decoration: none; display: inline-flex; align-items: gap: 4px; padding: 5px 10px; font-size: 12px; border-radius: 4px;">
+                                                    📄 View Letter
+                                                </a>
+                                            <% } %>
+                                            
+                                            <% if (!item.mediaFile && !item.letterFile) { %>
+                                                <small style="color: #888; font-style: italic;">(No attachments)</small>
+                                            <% } %>
+                                        </div>
+                                    </td>
+                                    <td><strong><%= item.citizenName %></strong><br><small style="color:#666;"><%= item.citizenMobile %></small></td>
+                                    <td>
+                                        <% if (item.status !== 'Completed' && item.status !== 'In_Progress') { %>
+                                            <form action="/update-grievance-details" method="POST" style="display:flex; flex-direction:column; gap:5px;">
+                                                <input type="hidden" name="grievanceId" value="<%= item.grievanceId %>">
+                                                
+                                                <label style="font-size:11px; font-weight:bold; color:#1e3c72; margin-top:2px;">Forward To:</label>
+                                                <select name="forwardTo" required style="padding:6px; border-radius:4px; font-weight:bold; border: 1px solid #1e3c72;">
+                                                    <option value="">-- அதிகாரியைத் தேர்வு செய்க --</option>
+                                                    <option value="MLA">MLA</option>
+                                                    <option value="Poruppalar">பொறுப்பாளர் (Poruppalar)</option>
+                                                    <option value="Collector">மாவட்ட ஆட்சியர் (Collector)</option>
+                                                    <option value="DSP">DSP (காவல் துறை)</option>
+                                                    <option value="Councilor">கவுன்சிலர் (Councilor)</option>
+                                                </select>
+
+                                                <select name="priority" required style="padding:6px; border-radius:4px; font-weight:bold;">
+                                                    <option value="Normal">Normal Priority</option>
+                                                    <option value="Urgent">🚨 Urgent Priority</option>
+                                                </select>
+                                                <select name="department" required style="padding: 6px; border-radius: 4px;">
+                                                    <option value="Highways">Highways</option>
+                                                    <option value="CMWSSB">CMWSSB</option>
+                                                </select>
+                                                <select name="deadlineHours" required style="padding: 6px; border-radius: 4px; font-size:12px;">
+                                                    <option value="24">24 மணிநேரம்</option>
+                                                    <option value="48">48 மணிநேரம்</option>
+                                                    <option value="168">1 வாரம்</option>
+                                                </select>
+                                                <button type="submit" class="status-btn" style="background:#1e3c72;">Forward Official</button>
+                                            </form>
+                                        <% } else { %>
+                                            <span class="status-badge <%= item.status %>">✓ <%= item.status %></span>
+                                        <% } %>
+                                    </td>
+                                    <td>
+                                        <% if (item.status === 'Completed') { %>
+                                            <div style="display:flex; gap:2px; margin-bottom: 5px;">
+                                                <img src="/uploads/<%= item.beforeImage %>" style="width:40px; height:40px; object-fit:cover; border-radius:4px;">
+                                                <img src="/uploads/<%= item.afterImage %>" style="width:40px; height:40px; object-fit:cover; border-radius:4px;">
+                                            </div>
+                                            <div style="display: flex; flex-direction: column; gap: 3px;">
+                                                <button type="button" onclick="generatePoster('<%= item.grievanceId %>', 'normal')" style="background: #007bff; color: white; border: none; padding: 4px; font-size: 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">🖼️ Image Poster</button>
+                                                <button type="button" onclick="generatePoster('<%= item.grievanceId %>', 'reels')" style="background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366); color: white; border: none; padding: 4px; font-size: 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">🎥 Reels Poster (9:16)</button>
+                                            </div>
+                                            
+                                            <form action="/appreciate-grievance" method="POST" style="margin-top: 5px;">
+                                                <input type="hidden" name="grievanceId" value="<%= item.grievanceId %>">
+                                                <input type="text" name="message" placeholder="பாராட்டுரை..." style="padding:4px; font-size:11px; width:70px;">
+                                                <button type="submit" style="background:orange; font-size:10px; color:white; border:none; padding:4px; border-radius:4px;">Appreciate</button>
+                                            </form>
+
+                                            <button type="button" onclick="generateDynamicPDF('<%= item.grievanceId %>', '<%= item.citizenName %>', 'பொறுப்பாளர்', '<%= item.grievanceCategory %>')" style="background:purple; font-size:10px; color:white; border:none; padding:4px; border-radius:4px; width:100%; margin-top:2px; cursor:pointer;">
+                                                Dynamic Certificate 📜
+                                            </button>
+                                        <% } else if (item.status === 'In_Progress') { %>
+                                            <% if (item.deadline) { %>
+                                                <div class="countdown-timer" data-deadline-ms="<%= new Date(item.deadline).getTime() %>">⏳ கணக்கிடப்படுகிறது...</div>
+                                            <% } else { %>
+                                                <span style="color: red; font-weight: bold;">⚠️ டெட்நிலை இல்லை</span>
+                                            <% } %>
+                                        <% } %>
+                                        
+                                        <% if (item.delayJustification) { %>
+                                            <div style="margin-top:5px; background:#fff3e0; padding:5px; border-radius:4px; font-size:11px; border-left:3px solid #ff9800;">
+                                                ⚠️ <strong>தாமத காரணம்:</strong> <%= item.delayJustification %>
+                                            </div>
+                                        <% } %>
+                                    </td>
+                                    <td>
+                                        <% if (item.status === 'Completed') { %>
+                                            <form action="/archive-complaint" method="POST">
+                                                <input type="hidden" name="grievanceId" value="<%= item.grievanceId %>">
+                                                <button type="submit" style="background:#ff9800; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold;">Archive</button>
+                                            </form>
+                                        <% } else { %> - <% } %>
+                                    </td>
+                                </tr>
+
+                                <% if (item.status === 'Completed') { %>
+                                    <div id="poster-normal-<%= item.grievanceId %>" style="position: absolute; left: -9999px; width: 600px; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 25px; border-radius: 12px; text-align: center;">
+                                        <h2 style="margin: 0; font-size: 22px; color: #a3e635;">🏛️ மக்கள் குறைதீர்ப்புப் பேரவை</h2>
+                                        <p style="font-size: 14px; opacity: 0.8; margin: 5px 0 15px 0;">தொகுதி: <%= constituency %> | மனு எண்: <%= item.grievanceId %></p>
+                                        <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; margin-bottom: 15px; text-align: left; font-size: 14px;">
+                                            <strong>கோரிக்கை:</strong> <%= item.grievanceCategory %><br>
+                                            <span><%= item.description %></span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; gap: 10px; margin-bottom: 15px;">
+                                            <div style="flex: 1;"><img src="/uploads/<%= item.beforeImage %>" style="width: 100%; height: 140px; object-fit: cover; border-radius: 6px; border: 2px solid #ff9800;"></div>
+                                            <div style="flex: 1;"><img src="/uploads/<%= item.afterImage %>" style="width: 100%; height: 140px; object-fit: cover; border-radius: 6px; border: 2px solid #4caf50;"></div>
+                                        </div>
+                                        <p style="font-size: 16px; font-weight: bold; color: #a3e635; margin: 0;">✓ கோரிக்கை வெற்றிகரமாக நிறைவேற்றப்பட்டது! 🎉</p>
+                                    </div>
+
+                                    <div id="poster-reels-<%= item.grievanceId %>" style="position: absolute; left: -9999px; width: 1080px; height: 1920px; background: linear-gradient(180deg, #0f2027 0%, #203a43 50%, #2c5364 100%); color: white; padding: 60px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; text-align: center;">
+                                        <div>
+                                            <h1 style="margin: 0; font-size: 55px; color: #a3e635;">🏛️ தமிழ்நாடு மக்கள் குறைதீர்ப்புப் பேரவை</h1>
+                                            <p style="font-size: 32px; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 12px; margin-top: 15px;">தொகுதி: <%= constituency %> | மனு எண்: <%= item.grievanceId %></p>
+                                        </div>
+                                        <div style="background: rgba(255,255,255,0.08); padding: 40px; border-radius: 20px; border-left: 15px solid #a3e635; text-align: left;">
+                                            <span style="font-size: 45px; font-weight: bold;"><%= item.grievanceCategory %></span>
+                                            <p style="font-size: 38px; line-height: 1.6; color: #f1f3f5;"><%= item.description %></p>
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; gap: 40px;">
+                                            <div style="position: relative; height: 450px; border-radius: 20px; overflow: hidden; border: 5px solid #ff9800;"><img src="/uploads/<%= item.beforeImage %>" style="width: 100%; height: 100%; object-fit: cover;"></div>
+                                            <div style="position: relative; height: 450px; border-radius: 20px; overflow: hidden; border: 5px solid #4caf50;"><img src="/uploads/<%= item.afterImage %>" style="width: 100%; height: 100%; object-fit: cover;"></div>
+                                        </div>
+                                        <div><h2 style="font-size: 48px; color: #a3e635; margin: 0;">🎉 கோரிக்கை வெற்றிகரமாக நிறைவேற்றப்பட்டது! 🎉</h2></div>
+                                    </div>
+                                <% } %>
+
+                            <% }); %>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        <% } %>
+
+        <% if (currentRole === 'Poruppalar') { 
+            let poruppalarComplaints = complaints.filter(c => c.constituency === constituency);
+        %>
+            <div class="card">
+                <h2>📋 பொறுப்பாளர் பணி ஒதுக்கீடு மேலாண்மை - தொகுதி: <%= constituency %></h2>
+                <table id="poruppalarWorkTable">
+                    <thead>
+                        <tr>
+                            <th>மனு விவரங்கள்</th>
+                            <th>முகவரி / காலக்கெடு</th>
+                            <th>பணி புகைப்படப் பதிவேற்றம் (Resolution)</th>
+                            <th>நிலை மற்றும் கூடுதல் செயல்கள்</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if(poruppalarComplaints.length === 0) { %>
+                            <tr><td colspan="4" style="text-align:center;">தற்போது உங்களுக்குப் பணிகள் ஏதுமில்லை.</td></tr>
+                        <% } else { %>
+                            <% poruppalarComplaints.forEach(function(item) { 
+                                let urgencyClass = '';
+                                if (item.status !== 'Completed' && item.deadline) {
+                                    let diffMs = new Date(item.deadline).getTime() - new Date().getTime();
+                                    let diffHours = diffMs / (1000 * 60 * 60);
+                                    if (diffHours > 0 && diffHours <= 5) {
+                                        urgencyClass = 'deadline-danger'; 
+                                    } else if (diffHours > 0 && diffHours <= 24) {
+                                        urgencyClass = 'deadline-warning'; 
+                                    }
+                                }
+                            %>
+                                <tr class="<%= urgencyClass %>">
+                                    <td>
+                                        <strong><%= item.grievanceId %></strong><br><%= item.description %><br>
+                                        <small style="color: blue; font-weight: bold;"><%= item.grievanceCategory %></small>
+                                        
+                                        <% if (item.certificateIssued) { %>
+                                            <div style="margin-top: 10px; background: #f3e5f5; padding: 8px; border-radius: 6px; border: 1px solid #ce93d8;">
+                                                <span style="font-size:12px; font-weight:bold; color:#4a148c;">📜 MLA பாராட்டுச் சான்றிதழ் தயார்!</span><br>
+                                                <button type="button" onclick="generateDynamicPDF('<%= item.grievanceId %>', '<%= item.citizenName %>', 'பொறுப்பாளர்', '<%= item.grievanceCategory %>')" class="status-btn" style="background:#4a148c; color:white; display:inline-block; text-decoration:none; margin-top:5px; padding: 4px 8px; text-align:center; font-size:11px;">
+                                                    📥 Download PDF Certificate
+                                                </button>
+                                            </div>
+                                        <% } %>
+
+                                        <% if (item.appreciation) { %>
+                                            <div style="margin-top: 5px; background: #e8f5e9; color: #1b5e20; padding: 5px; border-radius: 4px; font-size: 12px; font-weight: bold;">
+                                                🏅 MLA குறிப்பு: <%= item.appreciation %>
+                                            </div>
+                                        <% } %>
+                                    </td>
+                                    
+                                    <td>
+                                        <%= item.streetName %><br><br>
+                                        
+                                        <% if (item.deadline) { %>
+                                            <div class="countdown-timer" data-deadline-ms="<%= new Date(item.deadline).getTime() %>">⏳ கணக்கிடப்படுகிறது...</div>
+                                            
+                                            <form action="/submit-delay-justification" method="POST" style="margin-top:8px; display:flex; gap:4px;">
+                                                <input type="hidden" name="grievanceId" value="<%= item.grievanceId %>">
+                                                <input type="text" name="delayJustification" placeholder="தாமதத்திற்கான காரணம்..." required style="padding:5px; font-size:11px; flex:1;">
+                                                <button type="submit" style="background:#ff9800; color:white; border:none; padding:4px 8px; font-size:11px; border-radius:4px; cursor:pointer;">அனுப்பு</button>
+                                            </form>
+                                        <% } else { %>
+                                            <span style="color: red; font-weight: bold;">⚠️ டெட்நிலை இல்லை</span>
+                                        <% } %>
+                                    </td>
+                                    <td>
+                                        <% if(item.status !== 'Completed') { %>
+                                            <form action="/upload-resolution" method="POST" enctype="multipart/form-data" style="display:flex; flex-direction:column; gap:5px; border-bottom: 1px dashed #ccc; padding-bottom: 10px; margin-bottom: 10px;">
+                                                <input type="hidden" name="grievanceId" value="<%= item.grievanceId %>">
+                                                <label style="font-size:12px; font-weight: bold;">பணிக்கு முன் படம் (Before):</label>
+                                                <input type="file" name="beforeImage" required>
+                                                <label style="font-size:12px; font-weight: bold;">பணிக்கு பின் படம் (After Image):</label>
+                                                <input type="file" name="afterImage" required>
+                                                <button type="submit" class="status-btn" style="background:green; margin-top:5px;">Upload & Complete Work</button>
+                                            </form>
+
+                                            <form action="/submit-field-notes" method="POST" style="display:flex; flex-direction:column; gap:5px;">
+                                                <input type="hidden" name="grievanceId" value="<%= item.grievanceId %>">
+                                                <label style="font-size:12px; font-weight: bold;">📝 இடைக்கால கள அறிக்கை (Field Notes):</label>
+                                                <textarea name="fieldNotes" placeholder="தற்போதைய கள நிலவரத்தை எழுதவும்..." style="padding: 5px; font-size: 12px; border-radius: 4px; border: 1px solid #ccc;"><%= item.fieldNotes || '' %></textarea>
+                                                <button type="submit" style="background:#04a9eb; color:white; border:none; padding:5px; font-size:11px; font-weight:bold; border-radius:4px; cursor:pointer;">Update Field Notes</button>
+                                            </form>
+                                        <% } else { %>
+                                            <div style="display:flex; gap:5px;">
+                                                <div style="text-align:center;">
+                                                    <img src="/uploads/<%= item.beforeImage %>" style="width:40px; height:40px; object-fit:cover; border-radius:4px;"><br>
+                                                    <small style="font-size:10px; color:#666;">Before</small>
+                                                </div>
+                                                <div style="text-align:center;">
+                                                    <img src="/uploads/<%= item.afterImage %>" style="width:40px; height:40px; object-fit:cover; border-radius:4px;"><br>
+                                                    <small style="font-size:10px; color:#666;">After</small>
+                                                </div>
+                                            </div>
+                                            <span style="color:green; font-weight:bold; font-size:12px; display:block; margin-top:5px;">✓ பணி முழுமையாக முடிந்தது</span>
+                                            
+                                            <% if(item.fieldNotes) { %>
+                                                <div style="font-size: 11px; color: #555; background: #eee; padding: 4px; border-radius: 4px; margin-top: 4px;">
+                                                    <strong>கள அறிக்கை:</strong> <%= item.fieldNotes %>
+                                                </div>
+                                            <% } %>
+                                        <% } %>
+                                    </td>
+                                    <td>
+                                        <div style="margin-bottom: 10px;">
+                                            <label style="font-size:12px; font-weight:bold;">Live Status:</label><br>
+                                            <select class="status-select dynamic-status-switcher" data-id="<%= item.grievanceId %>" style="padding:5px; font-size:12px; font-weight:bold;">
+                                                <option value="Pending_Managaram" <%= item.status === 'Pending_Managaram' ? 'selected' : '' %>>Pending</option>
+                                                <option value="In_Progress" <%= item.status === 'In_Progress' ? 'selected' : '' %>>In Progress</option>
+                                                <option value="Completed" <%= item.status === 'Completed' ? 'selected' : '' %>>Completed</option>
+                                            </select>
+                                            <span class="ajax-loader" id="loader-<%= item.grievanceId %>" style="font-size:11px; color:green; display:none; margin-left:5px;">🔄 Saving...</span>
+                                        </div>
+
+                                        <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 5px;">
+                                            <% 
+                                                let whatsappNumber = item.citizenMobile ? item.citizenMobile.replace('+', '') : '';
+                                                let rawMsg = `வணக்கம் ${item.citizenName}, உங்களது மனு எண்: ${item.grievanceId} பற்றிய கள நிலவரம் தொடர்பாக உங்களைத் தொடர்பு கொள்கிறேன்.`;
+                                                let encodedMsg = encodeURIComponent(rawMsg);
+                                            %>
+                                            <a href="https://api.whatsapp.com/send?phone=<%= whatsappNumber %>&text=<%= encodedMsg %>" target="_blank" style="background-color: #25D366; color: white; border: none; padding: 6px 12px; font-size: 12px; font-weight: bold; border-radius: 4px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397 0 11.948 0c3.179.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.239 3.48 8.421-.003 6.549-5.342 11.897-11.893 11.897-2.007-.001-3.987-.508-5.745-1.474L0 24zm6.59-4.846c1.6.95 3.197 1.449 4.825 1.451 5.423 0 9.834-4.394 9.837-9.795.001-2.618-1.018-5.079-2.87-6.934C16.531 2.022 14.083.999 11.95.999c-5.424 0-9.84 4.4-9.842 9.799-.001 1.767.492 3.492 1.429 5.035l-1.019 3.724 3.841-.999zm11.367-7.251c-.33-.164-1.951-.959-2.254-1.069-.303-.11-.522-.164-.743.164-.221.328-.855 1.069-1.048 1.288-.193.219-.386.246-.715.082-1.289-.646-2.146-1.165-3.007-2.64-.23-.393.23-.364.659-1.218.073-.148.037-.277-.018-.387-.056-.109-.522-1.258-.716-1.723-.189-.456-.381-.393-.522-.401-.135-.008-.29-.009-.445-.009-.156 0-.41.058-.624.292-.214.233-.817.797-.817 1.944 0 1.148.837 2.256.953 2.415.115.158 1.648 2.498 3.991 3.496.558.237 1.008.379 1.353.487.562.179 1.073.154 1.477.094.45-.067 1.951-.794 2.227-1.562.276-.767.276-1.424.193-1.562-.083-.138-.29-.221-.621-.385z"/></svg>
+                                                WhatsApp
+                                            </a>
+
+                                            <% if (item.googleMapLocation && item.googleMapLocation !== 'Coordinates' && item.googleMapLocation !== '') { %>
+                                                <a href="https://www.google.com/maps/dir/?api=1&destination=<%= encodeURIComponent(item.googleMapLocation) %>" 
+                                                   target="_blank" 
+                                                   class="btn-map-route">
+                                                   📍 Go to Location
+                                                </a>
+                                            <% } else { %>
+                                                <span class="no-location">❌ No GPS Data</span>
+                                            <% } %>
+
+                                            <% if (item.citizenMobile) { %>
+                                                <a href="tel:<%= item.citizenMobile %>" class="btn-direct-call">
+                                                    📞 Call Citizen
+                                                </a>
+                                            <% } %>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        <% } %>
+
+        <% if (currentRole === 'CM') { %>
+            <div id="analyticsSection" class="card toggle-section" style="margin-bottom: 25px;">
+                <h2 style="color: #1e3c72;">🗺️ AI Heatmap & Regional Analytics (மாநில அளவிலான வரைபடம்)</h2>
+                <p style="color: #666; font-size: 14px;">அதிக புகார்கள் பதிவாகும் பகுதிகள் சிவப்பு நிறத்தில் Highlight செய்யப்படுகின்றன.</p>
+                
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 15px;">
+                    <div id="complaintMap" style="flex: 2; min-width: 300px; height: 220px; background: #eef2f5; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px dashed #002b49;">
+                        <p style="color: #555;">📍 [ Interactive Tamil Nadu AI Heatmap Loading... ]</p>
+                    </div>
+                    
+                    <div style="flex: 1; min-width: 250px; background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #d9534f;">
+                        <h4 style="margin-top:0; color:#d9534f;">🔥 High Alert Districts</h4>
+                        <ul style="padding-left: 20px; font-size: 14px; line-height: 1.8;">
+                            <li><b>Chennai:</b> 142 Urgent Grievances</li>
+                            <li><b>Madurai:</b> 89 Urgent Grievances</li>
+                            <li><b>Coimbatore:</b> 64 Urgent Grievances</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div id="rankingSection" class="card toggle-section" style="margin-bottom: 25px;">
+                <h2 style="color: #1e3c72;">🏆 Department & Ministry Performance Scoreboard</h2>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; margin-top: 10px;">
+                        <thead>
+                            <tr style="background-color: #1e3c72; color: white;">
+                                <th>Rank</th>
+                                <th>Department / Ministry</th>
+                                <th>Resolved Ratio</th>
+                                <th>Avg Resolution Time</th>
+                                <th>AI Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>🥇 <b>#1</b></td>
+                                <td>🔌 Electricity Board (TNEB)</td>
+                                <td>94%</td>
+                                <td>24 Hours</td>
+                                <td><span style="background: #27ae60; color: white; padding: 3px 8px; border-radius: 12px; font-weight: bold;">9.5 / 10</span></td>
+                            </tr>
+                            <tr>
+                                <td>🥈 <b>#2</b></td>
+                                <td>💧 Water Supply & Drainage</td>
+                                <td>88%</td>
+                                <td>36 Hours</td>
+                                <td><span style="background: #27ae60; color: white; padding: 3px 8px; border-radius: 12px; font-weight: bold;">8.8 / 10</span></td>
+                            </tr>
+                            <tr>
+                                <td>⚠️ <b>#8</b></td>
+                                <td>🛣️ Highways & Rural Roads</td>
+                                <td>61%</td>
+                                <td>5 Days</td>
+                                <td><span style="background: #e74c3c; color: white; padding: 3px 8px; border-radius: 12px; font-weight: bold;">6.1 / 10</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="directiveSection" class="card toggle-section" style="margin-bottom: 25px; background: #fff8e1; border: 1px solid #ffe082;">
+                <h2 style="color: #b78103; border-bottom-color: #ffe082;">🎙️ One-Click CM Voice & Direct Directive</h2>
+                <p style="font-size: 14px; color: #555;">மாவட்ட ஆட்சியர்கள் மற்றும் துறைச் செயலாளர்களுக்கு நேரடி உத்தரவு பிறப்பிக்க:</p>
+                
+                <form action="/send-cm-directive" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px;">
+                    <select name="targetOfficer" style="padding: 10px; border-radius: 6px; border: 1px solid #ccc; flex: 1;">
+                        <option value="">-- அதிகாரியைத் தேர்ந்தெடுக்கவும் (Select Authority) --</option>
+                        <option value="collector_chennai">District Collector - Chennai</option>
+                        <option value="sec_highways">Secretary - Highways Department</option>
+                    </select>
+
+                    <button type="button" style="background: #e74c3c; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 5px;">
+                        🔴 Record Voice
+                    </button>
+
+                    <input type="text" name="directiveText" placeholder="அல்லது நேரடி உரையை டைப் செய்யவும்..." style="flex: 2; padding: 10px; border-radius: 6px; border: 1px solid #ccc;">
+
+                    <button type="submit" style="background: #1e3c72; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                        🚀 Send Directive
+                    </button>
+                </form>
+            </div>
+
+            <div id="sentimentSection" class="card toggle-section" style="margin-bottom: 25px;">
+                <h2 style="color: #1e3c72;">📊 Public Sentiment & Feedback Analysis (மக்களின் திருப்தி நிலை)</h2>
+                
+                <div style="display: flex; justify-style: space-around; align-items: center; margin-top: 15px; text-align: center; flex-wrap: wrap; gap: 15px;">
+                    <div style="background: #e8f8f5; padding: 15px 25px; border-radius: 10px; min-width: 140px;">
+                        <h2 style="color: #27ae60; margin: 0; border: none;">78%</h2>
+                        <p style="margin: 5px 0 0; color: #2e7d32; font-weight: bold;">😊 நெகிழ்ச்சி / திருப்தி (Positive)</p>
+                    </div>
+
+                    <div style="background: #fef9e7; padding: 15px 25px; border-radius: 10px; min-width: 140px;">
+                        <h2 style="color: #f39c12; margin: 0; border: none;">14%</h2>
+                        <p style="margin: 5px 0 0; color: #d68910; font-weight: bold;">😐 நடுநிலை (Neutral)</p>
+                    </div>
+
+                    <div style="background: #fadbd8; padding: 15px 25px; border-radius: 10px; min-width: 140px;">
+                        <h2 style="color: #c0392b; margin: 0; border: none;">8%</h2>
+                        <p style="margin: 5px 0 0; color: #922b21; font-weight: bold;">☹️ குறைபாடுகள் (Negative)</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="cmMainTableSection" class="card">
+                <h2>👑 முதலமைச்சர் மாநில அளவிலான குறைதீர்ப்பு கண்காணிப்பு போர்ட்டல்</h2>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">மனு எண் & ஆவணங்கள்</th>
+                                <th style="width: 20%;">தொகுதி & மனுதாரர்</th>
+                                <th style="width: 25%;">புகார் விவரம் & வகை</th>
+                                <th style="width: 30%;">பார்வர்ட் / நிலைமை மாற்றீடு</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% complaints.forEach(function(item) { %>
+                                <tr>
+                                    <td>
+                                        <strong style="color:#b71c1c;"><%= item.grievanceId %></strong>
+                                        
+                                        <div class="attachment-buttons" style="margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap;">
+                                            <% if (item.mediaFile) { %>
+                                                <a href="/uploads/<%= item.mediaFile %>" target="_blank" class="status-btn" 
+                                                   style="background-color: #007bff; color: white; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; padding: 5px 8px; font-size: 11px; border-radius: 4px;">
+                                                    🖼️ View Media
+                                                </a>
+                                            <% } %>
+
+                                            <% if (item.letterFile) { %>
+                                                <a href="/uploads/<%= item.letterFile %>" target="_blank" class="status-btn" 
+                                                   style="background-color: #28a745; color: white; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; padding: 5px 8px; font-size: 11px; border-radius: 4px;">
+                                                    📄 View Letter
+                                                </a>
+                                            <% } %>
+                                            
+                                            <% if (!item.mediaFile && !item.letterFile) { %>
+                                                <br><small style="color: #888; font-style: italic;">(No attachments)</small>
+                                            <% } %>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <strong><%= item.constituency %></strong><br>
+                                        <small style="color:#555;"><%= item.citizenName %></small><br>
+                                        <small style="color:#888;"><%= item.citizenMobile %></small>
+                                    </td>
+                                    <td>
+                                        <small style="color: blue; font-weight: bold;"><%= item.grievanceCategory %></small>
+                                        <p style="margin: 5px 0 0 0; color: #444; font-size: 13px; line-height: 1.4;"><%= item.description %></p>
+                                    </td>
+                                    <td>
+                                        <form action="/update-status" method="POST" class="status-form">
+                                            <input type="hidden" name="grievanceId" value="<%= item.grievanceId %>">
+                                            
+                                            <select name="forwardTo" class="status-select" style="margin-bottom: 5px;">
+                                                <option value="">-- Forward To Officer --</option>
+                                                <option value="MLA">MLA</option>
+                                                <option value="Poruppalar">பொறுப்பாளர்</option>
+                                                <option value="Collector">District Collector</option>
+                                                <option value="DSP">DSP</option>
+                                                <option value="Councilor">Councilor</option>
+                                            </select>
+
+                                            <select name="newStatus" class="status-select">
+                                                <option value="Pending_Managaram" <%= item.status.startsWith('Pending') ? 'selected' : '' %>>Pending</option>
+                                                <option value="In_Progress" <%= item.status === 'In_Progress' ? 'selected' : '' %>>In Progress</option>
+                                                <option value="Completed" <%= item.status === 'Completed' ? 'selected' : '' %>>Completed</option>
+                                            </select>
+                                            <button type="submit" class="status-btn">Update & Forward</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        <% } %>
+
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const hasSeen = localStorage.getItem('hasSeenThirukkural');
+            const kuralModal = document.getElementById('kuralModal');
+
+            if (kuralModal) {
+                if (hasSeen === 'true') {
+                    kuralModal.style.display = 'none';
+                } else {
+                    kuralModal.style.display = 'flex';
+                }
+            }
+        });
+
+        function closeKuralModal() {
+            localStorage.setItem('hasSeenThirukkural', 'true');
+            const modal = document.getElementById('kuralModal');
+            if (modal) {
+                modal.style.transition = 'opacity 0.3s ease';
+                modal.style.opacity = '0';
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                }, 300);
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('hasSeenThirukkural');
+        }
+
+        function toggleNotifications() {
+            const dropdown = document.getElementById('notificationDropdown');
+            if (dropdown) dropdown.classList.toggle('show');
+        }
+
+        function requestPushPermission() {
+            if ('Notification' in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        alert('✅ Web Push Notifications வெற்றிகரமாக ஆன் செய்யப்பட்டது!');
+                        new Notification("தமிழ்நாடு மக்கள் குறைதீர்ப்பு போர்ட்டல்", {
+                            body: "அறிவிப்புகள் வெற்றிகரமாக இணைக்கப்பட்டது!",
+                            icon: "/favicon.ico"
+                        });
+                    } else {
+                        alert('⚠️ நோட்டிபிகேஷன் அனுமதி மறுக்கப்பட்டது.');
+                    }
+                });
+            } else {
+                alert('மன்னிக்கவும், உங்கள் உலாவி (Browser) Push Notifications-ஐ ஆதரிக்கவில்லை.');
+            }
+        }
+
+        function generateDynamicPDF(grievanceId, citizenName, officerRole, category) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('landscape');
+
+            doc.setDrawColor(30, 60, 114);
+            doc.setLineWidth(5);
+            doc.rect(10, 10, 277, 190);
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(22);
+            doc.setTextColor(30, 60, 114);
+            doc.text("GOVERNMENT OF TAMIL NADU", 140, 35, { align: "center" });
+
+            doc.setFontSize(16);
+            doc.setTextColor(183, 28, 28);
+            doc.text("GRIEVANCE REDRESSAL SERVICE CERTIFICATE", 140, 50, { align: "center" });
+
+            doc.setFontSize(12);
+            doc.setTextColor(50, 50, 50);
+            doc.setFont("helvetica", "normal");
+            doc.text("This is to officially certify that the grievance registered under ID:", 140, 75, { align: "center" });
+
+            doc.setFontSize(16);
+            doc.setFont("helvetica", "bold");
+            doc.text(grievanceId, 140, 90, { align: "center" });
+
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Submitted by Citizen: ${citizenName}`, 140, 105, { align: "center" });
+            doc.text(`Category: ${category}`, 140, 115, { align: "center" });
+
+            doc.setFont("helvetica", "italic");
+            doc.text(`Has been successfully resolved on time by the designated authority (${officerRole}).`, 140, 130, { align: "center" });
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(11);
+            doc.text("__________________________", 50, 170);
+            doc.text("Member of Legislative Assembly (MLA)", 50, 178);
+
+            doc.text("__________________________", 230, 170, { align: "right" });
+            doc.text("Chief Minister Special Cell", 230, 178, { align: "right" });
+
+            doc.save(`Certificate_${grievanceId}.pdf`);
+        }
+
+        function showMlaSection(sectionId) {
+            const el = document.getElementById(sectionId);
+            if(el) {
+                el.style.display = (el.style.display === 'none' || el.style.display === '') ? 'block' : 'none';
+            }
+        }
+
+        function downloadPDFReport() {
+            const element = document.getElementById('poruppalarWorkTable');
+            if(!element) return alert("டேபிள் தரவு இல்லை!");
+            const options = {
+                margin:       10,
+                filename:     'Poruppalar_Work_Report.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            };
+            html2pdf().from(element).set(options).save();
+        }
+
+        function updateMLAProfile() {
+    const selectedConstituency = document.getElementById('constituency').value;
+    const card = document.getElementById("mla-profile-card");
+    const mlaNameTag = document.getElementById("mla-name");
+    const mlaImgTag = document.getElementById("mla-image");
+    const fallbackTag = document.getElementById("mla-icon-fallback-new");
+
+    // MLA விவரங்களுக்கான தரவுத் தொகுப்பு (Data Mapping)
+    const mlaData = {
+        "Anna Nagar": {
+            name: "மாண்புமிகு எம்.கே. மோகன்",
+            image: "/uploads/mla_anna_nagar.jpeg"
+        },
+        "Kolathur": {
+            name: "மாண்புமிகு மு.க. ஸ்டாலின்",
+            image: "/uploads/mla_kolathur.jpg"
+        },
+        "T. Nagar": {
+            name: "மாண்புமிகு ஜெ. கருணாநிதி",
+            image: "/uploads/mla_tnagar.jpg"
+        }
+    };
+
+    if (selectedConstituency && mlaData[selectedConstituency]) {
+        card.style.display = "block"; 
+        mlaNameTag.innerText = mlaData[selectedConstituency].name;
+        mlaImgTag.src = mlaData[selectedConstituency].image;
+        mlaImgTag.style.display = 'block';
+        if (fallbackTag) fallbackTag.style.display = 'none';
+    } else {
+        card.style.display = "none"; 
+    }
+}
+
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if(sidebar && overlay) {
+                sidebar.classList.toggle('active');
+                overlay.classList.toggle('active');
+            }
+        }
+
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                if (section.style.display === "block") {
+                    section.style.display = "none";
+                } else {
+                    document.querySelectorAll('.toggle-section').forEach(s => s.style.display = 'none');
+                    section.style.display = "block";
+                }
+            }
+        }
+
+        function getCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    document.getElementById('googleMapLocation').value = position.coords.latitude + ", " + position.coords.longitude;
+                    alert("📍 உங்கள் தற்போதைய இருப்பிடம் எடுக்கப்பட்டது!");
+                });
+            }
+        }
+
+        function startSpeechToText() {
+            const voiceBtn = document.getElementById('voiceBtn');
+            const descriptionBox = document.getElementById('complaintDescription');
+            const langSelect = document.getElementById('voiceLangSelect');
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("மன்னிக்கவும், உங்கள் பிரவுசரில் வாய்ஸ் டைப்பிங் வசதி இல்லை!");
+                return;
+            }
+            const recognition = new SpeechRecognition();
+            recognition.lang = langSelect.value;
+            recognition.interimResults = false;
+            voiceBtn.innerHTML = "⏳ பேசலாம்...";
+            voiceBtn.style.background = "#4caf50";
+            recognition.start();
+
+            recognition.onresult = function(event) {
+                const result = event.results[0][0].transcript;
+                descriptionBox.value += result + " ";
+                descriptionBox.dispatchEvent(new Event('input')); 
+            };
+            recognition.onspeechend = function() {
+                recognition.stop();
+                voiceBtn.innerHTML = "🎙️ வாய்ஸ் டைப்பிங் (AI Voice)";
+                voiceBtn.style.background = "#b71c1c";
+            };
+            recognition.onerror = function() {
+                voiceBtn.innerHTML = "🎙️ வாய்ஸ் டைப்பிங் (AI Voice)";
+                voiceBtn.style.background = "#b71c1c";
+                alert("மீண்டும் முயற்சிக்கவும்!");
+            };
+        }
+
+        function generatePoster(grievanceId, type) {
+            const posterElement = document.getElementById(`poster-${type}-${grievanceId}`);
+            if (!posterElement) {
+                alert("போஸ்டர் விவரம் கிடைக்கவில்லை!");
+                return;
+            }
+            html2canvas(posterElement, { scale: 2 }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `Poster_${type}_${grievanceId}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        }
+    </script>
+    <script>
+        const areaData = {
+    "சென்னை": {
+        "Anna Nagar": ["வார்டு 99", "வார்டு 100", "வார்டு 101", "வார்டு 102"],
+        "Kolathur": ["வார்டு 64", "வார்டு 65", "வார்டு 66", "வார்டு 67"],
+        "T. Nagar": ["வார்டு 113", "வார்டு 114", "வார்டு 115", "வார்டு 116"]
+    }
+};
+
+function updateConstituencies() {
+    const districtSelect = document.getElementById('district');
+    const constituencySelect = document.getElementById('constituency');
+    const wardSelect = document.getElementById('ward');
+    
+    // MLA கார்டை மறைக்க
+    const mlaCard = document.getElementById("mla-profile-card");
+    if (mlaCard) mlaCard.style.display = "none";
+
+    const selectedDistrict = districtSelect.value;
+
+    constituencySelect.innerHTML = '<option value="">தொகுதியைத் தேர்ந்தெடுக்கவும்</option>';
+    wardSelect.innerHTML = '<option value="">முதலில் தொகுதியைத் தேர்ந்தெடுக்கவும்</option>';
+
+    if (selectedDistrict && areaData[selectedDistrict]) {
+        const constituencies = Object.keys(areaData[selectedDistrict]);
+        constituencies.forEach(constituency => {
+            const option = document.createElement('option');
+            option.value = constituency;
+            option.textContent = constituency;
+            constituencySelect.appendChild(option);
+        });
+    }
+}
+
+// தொகுதி மாறியதும் வார்டுகளை அப்டேட் செய்ய
+function updateWards() {
+    const districtSelect = document.getElementById('district');
+    const constituencySelect = document.getElementById('constituency');
+    const wardSelect = document.getElementById('ward');
+
+    const selectedDistrict = districtSelect.value;
+    const selectedConstituency = constituencySelect.value;
+
+    // Reset Ward Dropdown
+    wardSelect.innerHTML = '<option value="">வார்டைத் தேர்ந்தெடுக்கவும்</option>';
+
+    if (selectedDistrict && selectedConstituency && areaData[selectedDistrict][selectedConstituency]) {
+        const wards = areaData[selectedDistrict][selectedConstituency];
+        wards.forEach(ward => {
+            const option = document.createElement('option');
+            option.value = ward;
+            option.textContent = ward;
+            wardSelect.appendChild(option);
+        });
+    }
+}
+
+function autoSelectDepartment() {
+    const description = document.getElementById('description').value.toLowerCase();
+    const deptSelect = document.getElementById('department');
+
+    // முக்கிய வார்த்தைகள் மற்றும் துறைகளின் பட்டியல்
+    const keywords = {
+        "மின்சாரம்": ["current", "eb", "electricity", "power", "light", "மின்சாரம்", "வயர்", "டிரான்ஸ்பார்மர்"],
+        "குடிநீர் மற்றும் கழிவுநீர்": ["water", "drainage", "pipe", "leak", "தண்ணீர்", "குடிநீர்", "கழிவுநீர்", "சாக்கடை"],
+        "சாலை மற்றும் போக்குவரத்து": ["road", "pothole", "street light", "traffic", "சாலை", "தெருவிளக்கு", "பழுது"],
+        "சுகாதாரம் மற்றும் தூய்மை": ["garbage", "waste", "clean", "mosquito", "குப்பை", "கொசு", "சுகாதாரம்"]
+    };
+
+    for (let dept in keywords) {
+        if (keywords[dept].some(word => description.includes(word))) {
+            deptSelect.value = dept;
+            break;
+        }
+    }
+}
+
+// இந்த ஃபங்ஷனை Dashboard Page Load ஆகும் போது இயக்க வேண்டும்
+function checkUrgentComplaints(complaintsList) {
+    // MLA பார்வர்ட் செய்த, இன்னும் முடிக்கப்படாத (Pending) 'Urgent' புகார்களை மட்டும் வடிகட்டுகிறது
+    const urgentComplaints = complaintsList.filter(complaint => 
+        complaint.priority === 'Urgent' && complaint.status !== 'Resolved'
+    );
+
+    const banner = document.getElementById('urgent-alert-banner');
+    const countSpan = document.getElementById('urgent-count');
+
+    if (urgentComplaints.length > 0) {
+        countSpan.innerText = urgentComplaints.length;
+        banner.style.display = 'block'; // Urgent புகார்கள் இருந்தால் Banner தெரியும்
+    } else {
+        banner.style.display = 'none';  // இல்லை என்றால் மறையும்
+    }
+}
+
+// Banner-ஐ மூட விரும்பினால்
+function dismissUrgentBanner() {
+    document.getElementById('urgent-alert-banner').style.display = 'none';
+}
+
+// மாதிரித் தரவு (Sample Data - உங்கள் Backend/Database-ல் இருந்து வருவது)
+const sampleComplaints = [
+    { id: 101, title: "மின்சார வயர் துண்டிப்பு", priority: "Urgent", status: "Pending" },
+    { id: 102, title: "குடிநீர் குழாய் பழுது", priority: "Normal", status: "Pending" },
+    { id: 103, title: "சாக்கடை அடைப்பு", priority: "Urgent", status: "In Progress" }
+];
+
+// பக்கம் லோட் ஆனதும் ஃபங்ஷனை இயக்கவும்
+document.addEventListener("DOMContentLoaded", function() {
+    checkUrgentComplaints(sampleComplaints);
+});
+    </script>
+</body>
+</html>
